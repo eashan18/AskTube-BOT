@@ -1,0 +1,33 @@
+version: "3.8"
+services:
+  backend:
+    build: .
+    container_name: asktube_backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./:/app:ro
+    restart: unless-stopped
+
+  frontend:
+    image: python:3.11-slim
+    container_name: asktube_frontend
+    env_file:
+      - .env
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: ["bash", "-lc", "pip install --no-cache-dir -r requirements.txt && streamlit run frontend/streamlit_app.py --server.port 8501 --server.address 0.0.0.0"]
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  chroma_data:
+  sqlite_data:

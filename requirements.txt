@@ -1,0 +1,48 @@
+# AskTube AI - Dependencies
+# Core web & API
+fastapi>=0.95.0
+uvicorn[standard]>=0.22.0
+
+# Frontend
+streamlit>=1.26.0
+
+# RAG and embeddings
+langchain>=0.0.360
+sentence-transformers>=2.2.2
+transformers>=4.35.2
+accelerate>=0.20.3
+
+# Vector DB
+chromadb>=0.3.29
+
+# Transcript extraction & media
+youtube-transcript-api>=0.4.4
+yt-dlp>=2024.1.0
+openai-whisper>=20230314
+
+# LLM / API clients
+openai>=0.27.0
+groq>=0.1.0
+
+# Config, validation, and utils
+python-dotenv>=1.0.0
+pydantic>=1.10.11
+sqlalchemy>=2.0.19
+alembic>=1.11.1
+
+# Async DB support (optional helpers)
+databases>=0.5.8
+aiosqlite>=0.18.0
+
+# Testing & linting
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Dev / helpers
+tqdm>=4.66.0
+httpx>=0.24.0
+python-multipart>=0.0.6
+
+# Notes:
+# - Some providers (Groq, BAAI embeddings) may require additional SDKs or credentials.
+# - `openai-whisper` requires ffmpeg installed on the system for audio processing.
