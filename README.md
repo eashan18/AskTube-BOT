@@ -1,4 +1,4 @@
-<img width="1510" height="453" alt="image" src="https://github.com/user-attachments/assets/5e098f4e-6a4b-402d-900a-76ddb115aff7" /># AskTube-BOT
+ AskTube-BOT
 
 A local FastAPI + Streamlit app for chatting with YouTube video transcripts (RAG). This repository is intended to run locally for development and testing.
 
