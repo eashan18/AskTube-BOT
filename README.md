@@ -1,4 +1,4 @@
-# AskTube-BOT
+<img width="1510" height="453" alt="image" src="https://github.com/user-attachments/assets/5e098f4e-6a4b-402d-900a-76ddb115aff7" /># AskTube-BOT
 
 A local FastAPI + Streamlit app for chatting with YouTube video transcripts (RAG). This repository is intended to run locally for development and testing.
 
@@ -42,10 +42,9 @@ Project Overview
 AskTube-BOT is a local prototype that lets you index YouTube videos (transcripts) and ask questions using a retrieval-augmented approach. It uses a FastAPI backend for indexing and search and a Streamlit frontend for interaction.
 
 Demo Screenshot / GIF
+<img width="1530" height="457" alt="image" src="https://github.com/user-attachments/assets/c740b654-0411-48d1-bffe-38bcc74b0856" />
 ---------------------
-The UI screenshot is included in this repository at `assets/demo.png`.
 
-![Demo](assets/demo.png)
 
 Features
 --------
