@@ -37,8 +37,62 @@ class TranscriptService:
     - `extract_transcript_from_youtube(url)` -> VideoTranscript
     """
 
+    PREFERRED_LANGUAGE_CODES = ["hi", "en"]
+
     def __init__(self):
         self.settings = get_settings()
+
+    def _fetch_preferred_transcript(self, transcripts):
+        if hasattr(transcripts, "find_transcript"):
+            try:
+                return transcripts.find_transcript(self.PREFERRED_LANGUAGE_CODES).fetch()
+            except Exception:
+                pass
+
+        for language_code in self.PREFERRED_LANGUAGE_CODES:
+            for transcript in transcripts:
+                if getattr(transcript, "language_code", None) == language_code:
+                    try:
+                        return transcript.fetch()
+                    except Exception:
+                        continue
+
+        for transcript in transcripts:
+            try:
+                return transcript.fetch()
+            except Exception:
+                continue
+
+        return []
+
+    def _fetch_transcript_with_preferred_languages(self, api, video_id: str):
+        raw = []
+
+        if hasattr(api, "list_transcripts"):
+            transcripts = api.list_transcripts(video_id)
+            raw = self._fetch_preferred_transcript(transcripts)
+            if raw:
+                return raw
+
+        if hasattr(api, "list"):
+            transcripts = api.list(video_id)
+            raw = self._fetch_preferred_transcript(transcripts)
+            if raw:
+                return raw
+
+        if hasattr(api, "get_transcript"):
+            raw = api.get_transcript(video_id)
+        elif hasattr(api, "get_transcripts"):
+            raw = api.get_transcripts(video_id)
+        elif hasattr(api, "fetch"):
+            try:
+                raw = api.fetch(video_id)
+            except Exception:
+                raw = []
+        else:
+            raise AttributeError("youtube_transcript_api missing expected API")
+
+        return raw
 
     def extract_transcript_from_youtube(self, url: str) -> VideoTranscript:
         """Extract transcript using YouTube captions or direct audio speech transcription."""
@@ -57,52 +111,34 @@ class TranscriptService:
 
         try:
             api = YouTubeTranscriptApi()
-            # try the common API name first
-            if hasattr(api, "get_transcript"):
-                raw = api.get_transcript(video_id)
-            elif hasattr(api, "get_transcripts"):
-                raw = api.get_transcripts(video_id)
-            elif hasattr(api, "list_transcripts"):
-                transcripts = api.list_transcripts(video_id)
-                try:
-                    raw = transcripts.fetch()
-                except Exception:
-                    try:
-                        raw = transcripts[0].fetch()
-                    except Exception:
-                        raw = []
-            elif hasattr(api, "fetch"):
-                try:
-                    raw = api.fetch(video_id)
-                except Exception:
-                    raw = []
-            elif hasattr(api, "list"):
-                try:
+            raw = self._fetch_transcript_with_preferred_languages(api, video_id)
+        except (TranscriptsDisabled, NoTranscriptFound) as exc:
+            logger.warning(
+                "Transcript unavailable for video %s (%s), attempting list_transcripts/Whisper fallback",
+                video_id,
+                type(exc).__name__,
+            )
+            raw = []
+            try:
+                api = YouTubeTranscriptApi()
+                if hasattr(api, "list_transcripts"):
+                    transcripts = api.list_transcripts(video_id)
+                    raw = self._fetch_preferred_transcript(transcripts)
+                elif hasattr(api, "list"):
                     transcripts = api.list(video_id)
-                    try:
-                        raw = transcripts.find_transcript(["en"]).fetch()
-                    except Exception:
-                        raw = transcripts[0].fetch()
-                except Exception:
-                    raw = []
-            else:
-                raise AttributeError("youtube_transcript_api missing expected API")
-        except TranscriptsDisabled:
-            logger.error("Transcripts disabled for video %s", video_id)
-            raise
-        except NoTranscriptFound:
-            logger.error("No transcript found for video %s", video_id)
-            raise
+                    raw = self._fetch_preferred_transcript(transcripts)
+            except Exception:
+                raw = []
         except AttributeError as e:
             logger.error("youtube_transcript_api API not compatible: %s", e)
-            raise NoTranscriptFound(f"Transcript API not available for video {video_id}")
+            raise RuntimeError(f"Transcript API not available for video {video_id}") from e
         except Exception as e:
             logger.exception("Unexpected error when fetching transcript: %s", e)
-            raise NoTranscriptFound(f"Failed to fetch transcript for {video_id}")
+            raise RuntimeError(f"Failed to fetch transcript for {video_id}") from e
 
         # If the youtube_transcript_api returned nothing, attempt Whisper fallback
         if not raw:
-            logger.info("No transcript returned by youtube_transcript_api, attempting Whisper fallback")
+            logger.info("Transcript unavailable via youtube_transcript_api, attempting Whisper fallback")
             try:
                 return self._whisper_fallback(url, video_id)
             except Exception as exc:

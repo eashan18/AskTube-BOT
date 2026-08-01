@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.routes import videos, chat, health
+from .config.dependencies import initialize_database
 from .config.logging_config import setup_logging
 from .config.settings import get_settings
 
@@ -9,6 +10,7 @@ from .config.settings import get_settings
 def create_app() -> FastAPI:
     settings = get_settings()
     setup_logging(settings)
+    initialize_database()
 
     app = FastAPI(title="AskTube AI")
 

@@ -38,13 +38,20 @@ class ChatService:
 
         return normalized
 
-    def answer(self, db, question: str, video_id: Optional[str] = None, top_k: int | None = None):
+    def answer(self, db, question: str, video_id: Optional[str] = None, top_k: int | None = None, user_id: Optional[str] = None):
         # retrieve
         snippets = self.retriever.retrieve(question, top_k=top_k, video_id=video_id)
 
         if not snippets:
             answer = "I couldn't find that information in the uploaded video."
-            repo.save_chat_history(db, question=question, answer=answer, retrieved_chunks=[], video_id=video_id)
+            repo.save_chat_history(
+                db,
+                question=question,
+                answer=answer,
+                retrieved_chunks=[],
+                user_id=user_id,
+                video_id=video_id,
+            )
             return {"answer": answer, "citations": [], "retrieved_chunks": []}
 
         prompt = build_prompt(snippets, question)
@@ -85,7 +92,14 @@ class ChatService:
             text = self._extract_final_answer(text)
 
         # save history
-        repo.save_chat_history(db, question=question, answer=text, retrieved_chunks=snippets, video_id=video_id)
+        repo.save_chat_history(
+            db,
+            question=question,
+            answer=text,
+            retrieved_chunks=snippets,
+            user_id=user_id,
+            video_id=video_id,
+        )
 
         # extract simple citations from snippets
         citations = [{"id": s.get("id"), "metadata": s.get("metadata")} for s in snippets]

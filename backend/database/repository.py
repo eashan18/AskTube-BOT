@@ -75,8 +75,16 @@ def add_chunks(db: Session, video_id: str, chunks: List[dict]):
         db.commit()
 
 
-def save_chat_history(db: Session, question: str, answer: str, retrieved_chunks: List[dict], video_id: Optional[str] = None) -> ChatHistory:
+def get_chat_history(db: Session, user_id: str, video_id: Optional[str] = None, limit: int = 50) -> List[ChatHistory]:
+    query = db.query(ChatHistory).filter(ChatHistory.user_id == user_id)
+    if video_id:
+        query = query.filter(ChatHistory.video_id == video_id)
+    return query.order_by(ChatHistory.created_at.desc()).limit(limit).all()
+
+
+def save_chat_history(db: Session, question: str, answer: str, retrieved_chunks: List[dict], user_id: Optional[str] = None, video_id: Optional[str] = None) -> ChatHistory:
     item = ChatHistory(
+        user_id=user_id,
         video_id=video_id,
         question=question,
         answer=answer,

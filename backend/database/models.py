@@ -44,6 +44,7 @@ class ChatHistory(Base):
     __tablename__ = "chat_history"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(String, nullable=True, index=True)
     video_id = Column(String, nullable=True, index=True)
     question = Column(Text, nullable=False)
     answer = Column(Text, nullable=False)

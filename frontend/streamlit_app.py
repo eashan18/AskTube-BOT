@@ -1,9 +1,11 @@
 import streamlit as st
 import httpx
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from uuid import uuid4
 
-API_BASE = os.getenv("API_BASE", "http://localhost:8000/api")
+API_BASE = os.getenv("API_BASE", "http://localhost:8001/api")
+STREAMLIT_URL = os.getenv("STREAMLIT_URL", "http://localhost:8501")
 
 
 def header():
@@ -12,6 +14,29 @@ def header():
         "Ask questions about the content of uploaded YouTube videos. "
         "Answers are generated from indexed transcripts and include citation details."
     )
+    st.info(f"Live app URL: [{STREAMLIT_URL}]({STREAMLIT_URL})")
+
+
+def get_query_params() -> dict:
+    # removed: persistent query-param based user_id support
+    return {}
+
+
+def set_query_params(params: dict) -> None:
+    # no-op: we don't expose user_id via URL anymore
+    return None
+
+
+def get_or_create_user_id() -> str:
+    # Create a session-scoped anonymous user id (not exposed in the URL)
+    if "user_id" not in st.session_state:
+        st.session_state["user_id"] = str(uuid4())
+    return st.session_state["user_id"]
+
+
+def show_history_link(user_id: str) -> None:
+    # persistent history links disabled by user request
+    return None
 
 
 def home_page():
@@ -22,6 +47,8 @@ def home_page():
         "The app normalizes YouTube URLs and strips playlist/query parameters automatically."
     )
     st.info("Upload a video using the full URL, then use the Chat page to query the indexed content.")
+    user_id = st.session_state.get("user_id") or get_or_create_user_id()
+    show_history_link(user_id)
 
 
 def upload_page():
@@ -56,9 +83,27 @@ def upload_page():
         st.write(f"**Title:** {st.session_state.get('last_video_title')}  ")
 
 
+def load_history(user_id: str, video_id: Optional[str] = None) -> None:
+    try:
+        params = {"user_id": user_id}
+        if video_id:
+            params["video_id"] = video_id
+        resp = httpx.get(f"{API_BASE}/chat-history", params=params, timeout=30.0)
+        resp.raise_for_status()
+        data = resp.json()
+        history = [
+            {"question": item["question"], "answer": item["answer"], "video_id": item.get("video_id")}
+            for item in data.get("items", [])
+        ]
+        st.session_state["history"] = history
+    except Exception as exc:
+        st.warning(f"Could not load history: {exc}")
+
+
 def chat_page():
     header()
     st.header("Chat")
+    user_id = st.session_state.get("user_id") or get_or_create_user_id()
 
     if "last_video_id" not in st.session_state:
         st.info("Upload a video first or enter a Video ID below.")
@@ -80,7 +125,12 @@ def chat_page():
         else:
             with st.spinner("Retrieving and generating answer..."):
                 try:
-                    payload = {"question": question, "video_id": video_id or None, "top_k": top_k}
+                    payload = {
+                        "question": question,
+                        "video_id": video_id or None,
+                        "top_k": top_k,
+                        "user_id": user_id,
+                    }
                     resp = httpx.post(f"{API_BASE}/chat", json=payload, timeout=120.0)
                     resp.raise_for_status()
                     data = resp.json()
@@ -117,6 +167,7 @@ def chat_page():
                     history = st.session_state.get("history", [])
                     history.insert(0, {"question": question, "answer": answer})
                     st.session_state["history"] = history
+                    st.session_state["history_loaded"] = True
                 except httpx.HTTPStatusError as exc:
                     message = exc.response.text if exc.response is not None else str(exc)
                     st.error(f"Chat failed: {message}")
@@ -127,6 +178,11 @@ def chat_page():
 def history_page():
     header()
     st.header("History")
+    user_id = st.session_state.get("user_id") or get_or_create_user_id()
+    show_history_link(user_id)
+
+    if not st.session_state.get("history_loaded"):
+        load_history(user_id, video_id=st.session_state.get("last_video_id"))
 
     if st.button("Clear session history"):
         st.session_state["history"] = []
@@ -161,8 +217,12 @@ def admin_page():
 def main():
     st.set_page_config(page_title="AskTube AI", layout="wide")
 
+    if "user_id" not in st.session_state:
+        st.session_state["user_id"] = get_or_create_user_id()
     if "history" not in st.session_state:
         st.session_state["history"] = []
+    if "history_loaded" not in st.session_state:
+        st.session_state["history_loaded"] = False
 
     pages = {
         "Home": home_page,
