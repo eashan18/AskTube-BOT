@@ -41,12 +41,20 @@ class TranscriptService:
         self.settings = get_settings()
 
     def extract_transcript_from_youtube(self, url: str) -> VideoTranscript:
-        """Extract transcript using `youtube-transcript-api`.
-
-        Falls back to raising a descriptive exception; higher levels may call
-        Whisper fallback if needed.
-        """
+        """Extract transcript using YouTube captions or direct audio speech transcription."""
         video_id = _get_video_id(url)
+
+        if self.settings.FORCE_WHISPER_TRANSCRIPTION:
+            logger.info("Force Whisper transcription enabled for video %s", video_id)
+            try:
+                return self._whisper_fallback(url, video_id)
+            except Exception as exc:
+                logger.exception(
+                    "Forced Whisper transcription failed for %s, falling back to youtube_transcript_api: %s",
+                    video_id,
+                    exc,
+                )
+
         try:
             api = YouTubeTranscriptApi()
             # try the common API name first
@@ -139,10 +147,19 @@ class TranscriptService:
         tmpdir = tempfile.mkdtemp()
         out_path = os.path.join(tmpdir, f"{video_id}.wav")
         ydl_opts = {
-            "format": "bestaudio/best",
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
             "outtmpl": out_path,
             "quiet": True,
             "no_warnings": True,
+            "noplaylist": True,
+            "restrictfilenames": True,
+            "ignoreerrors": False,
+            "nocheckcertificate": True,
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            },
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

@@ -18,6 +18,26 @@ class ChatService:
         self.retriever = RAGRetriever()
         self.llm = LLMClient()
 
+    def _extract_final_answer(self, text: str) -> str:
+        # Normalize model output by stripping out any leading reasoning and keeping
+        # only the final answer section if present.
+        if not text:
+            return text
+
+        normalized = text.strip()
+        # If there is a 'Final Answer:' delimiter, keep the final answer and citations block
+        if "Final Answer:" in normalized:
+            normalized = normalized.split("Final Answer:", 1)[1].strip()
+
+        # Remove trailing reasoning or tool instructions after the citations section
+        if "Citations:" in normalized:
+            parts = normalized.split("Citations:", 1)
+            answer_part = parts[0].strip()
+            citations_part = parts[1].strip()
+            normalized = f"{answer_part}\n\nCitations: {citations_part}"
+
+        return normalized
+
     def answer(self, db, question: str, video_id: Optional[str] = None, top_k: int | None = None):
         # retrieve
         snippets = self.retriever.retrieve(question, top_k=top_k, video_id=video_id)
@@ -39,17 +59,30 @@ class ChatService:
         # try to parse generated text from known keys
         text = None
         if isinstance(raw, dict):
-            # common providers include `text`, `generated_text`, or `choices` list
-            if "generated_text" in raw:
-                text = raw["generated_text"]
-            elif "text" in raw:
+            if "text" in raw and raw["text"] is not None:
                 text = raw["text"]
+            elif "generated_text" in raw and raw["generated_text"] is not None:
+                text = raw["generated_text"]
+            elif "output_text" in raw and raw["output_text"] is not None:
+                text = raw["output_text"]
             elif "choices" in raw and isinstance(raw["choices"], list) and raw["choices"]:
                 first = raw["choices"][0]
                 text = first.get("text") or first.get("message", {}).get("content")
+            elif "output" in raw and isinstance(raw["output"], list):
+                parts = []
+                for item in raw["output"]:
+                    for content in item.get("content", []):
+                        if content.get("type") in ("output_text", "text", "reasoning_text"):
+                            t = content.get("text") or content.get("output_text")
+                            if t:
+                                parts.append(t)
+                if parts:
+                    text = "\n".join(parts)
+
         if text is None:
-            # fallback to raw string
-            text = str(raw)
+            text = "I couldn't find that information in the uploaded video."
+        else:
+            text = self._extract_final_answer(text)
 
         # save history
         repo.save_chat_history(db, question=question, answer=text, retrieved_chunks=snippets, video_id=video_id)

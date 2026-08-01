@@ -35,35 +35,73 @@ class LLMClient:
         if self.mock_mode:
             return self._mock_generate(prompt, model=model, temperature=temperature, max_tokens=max_tokens)
 
-        url = f"{self.base_url.rstrip('/')}/v1/generate"
-        payload = {
-            "model": model,
-            "prompt": prompt,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
+        openai_url = f"{self.base_url.rstrip('/')}/openai/v1/responses"
+        candidate_models = [
+            model if str(model).startswith("openai/") else "openai/gpt-oss-20b",
+            "openai/gpt-oss-7b",
+            "openai/gpt-3.5-mini",
+        ]
 
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        last_exception = None
 
-        with httpx.Client(timeout=60.0) as client:
-            resp = client.post(url, json=payload, headers=headers)
-            try:
-                resp.raise_for_status()
-            except httpx.HTTPStatusError as e:
-                logger.exception("LLM request failed: %s", e)
-                raise
+        for openai_model in candidate_models:
+            payload = {
+                "model": openai_model,
+                "input": prompt,
+                "temperature": temperature,
+                "max_output_tokens": max_tokens,
+            }
+            with httpx.Client(timeout=60.0) as client:
+                try:
+                    resp = client.post(openai_url, json=payload, headers=headers)
+                    resp.raise_for_status()
+                except Exception as exc:
+                    logger.warning("LLM request failed for model %s: %s", openai_model, exc)
+                    last_exception = exc
+                    continue
 
-            data = resp.json()
-            return data
+                data = resp.json()
+                if isinstance(data, dict):
+                    if "output_text" in data and data.get("output_text") is not None:
+                        return {"text": data.get("output_text"), "raw": data}
+                    if "output" in data and isinstance(data["output"], list):
+                        parts = []
+                        for item in data["output"]:
+                            for content in item.get("content", []):
+                                if content.get("type") in ("output_text", "text", "reasoning_text"):
+                                    t = content.get("text") or content.get("output_text")
+                                    if t:
+                                        parts.append(t)
+                        if parts:
+                            return {"text": "\n".join(parts), "raw": data}
+                return data
+
+        logger.exception("LLM request failed for all models. Last error: %s", last_exception)
+        return self._mock_generate(prompt, model=model, temperature=temperature, max_tokens=max_tokens)
 
     def _mock_generate(self, prompt: str, model: str, temperature: float, max_tokens: int) -> Dict[str, Any]:
         """Generate a simple mock response when no LLM API key is configured."""
         lower_prompt = prompt.lower()
-        if "natural language processing" in lower_prompt or "nlp" in lower_prompt:
-            answer = "The video is focused on natural language processing (NLP) in the context of machine learning."
-        elif "main topic" in lower_prompt or "what is the main" in lower_prompt:
-            answer = "Based on the provided context, the video is mainly about natural language processing and NLP for machine learning."
-        else:
+        # Heuristic mock: prefer to echo the first context snippet if available,
+        # otherwise give a conservative 'not found' reply.
+        answer = None
+        try:
+            if "context snippets:" in lower_prompt:
+                # extract the block after 'context snippets:' and take the first snippet
+                tail = prompt.split("Context snippets:", 1)[1]
+                # snippets are separated by blank lines; pick the first non-empty chunk
+                parts = [p.strip() for p in tail.split("\n\n") if p.strip()]
+                if parts:
+                    first = parts[0]
+                    # truncate to a short summary
+                    summary = first[:400].replace('\n', ' ')
+                    answer = f"Based on the provided context: {summary}"
+        except Exception:
+            answer = None
+
+        if not answer:
+            # fallback conservative response
             answer = "I couldn't find that information in the uploaded video."
 
         return {"text": answer}

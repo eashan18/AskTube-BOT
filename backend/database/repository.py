@@ -42,10 +42,18 @@ def delete_video(db: Session, video_id: str) -> bool:
 
 def add_chunks(db: Session, video_id: str, chunks: List[dict]):
     # chunks: list of dicts with chunk_number, start_timestamp, end_timestamp, original_text
+    # avoid inserting duplicate chunks (id unique constraint)
+    existing = db.query(Chunk).filter(Chunk.video_id == video_id).all()
+    existing_ids = {c.id for c in existing}
+
     objs = []
     for c in chunks:
+        cid = f"{video_id}_chunk_{c['metadata']['chunk_number']}"
+        if cid in existing_ids:
+            # skip already-inserted chunk
+            continue
         obj = Chunk(
-            id=f"{video_id}_chunk_{c['metadata']['chunk_number']}",
+            id=cid,
             video_id=video_id,
             chunk_number=c['metadata']['chunk_number'],
             start_timestamp=c['metadata']['start_timestamp'],
@@ -55,11 +63,14 @@ def add_chunks(db: Session, video_id: str, chunks: List[dict]):
         objs.append(obj)
         db.add(obj)
 
-    db.commit()
+    if objs:
+        db.commit()
     # update chunk count
     video = get_video(db, video_id)
     if video:
-        video.chunk_count = len(chunks)
+        # update chunk_count to reflect total stored chunks for this video
+        total_chunks = db.query(Chunk).filter(Chunk.video_id == video_id).count()
+        video.chunk_count = total_chunks
         db.add(video)
         db.commit()
 

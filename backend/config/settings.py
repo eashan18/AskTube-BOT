@@ -53,6 +53,7 @@ class Settings(BaseSettings):
 
     # Whisper & tools
     WHISPER_MODEL: str = Field("small", env="WHISPER_MODEL")
+    FORCE_WHISPER_TRANSCRIPTION: bool = Field(False, env="FORCE_WHISPER_TRANSCRIPTION")
     FFMPEG_PATH: str = Field("ffmpeg", env="FFMPEG_PATH")
     YTDLP_PATH: str = Field("yt-dlp", env="YTDLP_PATH")
 

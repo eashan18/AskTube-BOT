@@ -8,9 +8,9 @@ from typing import List, Dict
 
 
 SYSTEM_PROMPT = (
-    "You are an assistant that answers questions strictly using the provided "
-    "context. Do NOT use any outside knowledge. If the answer is not present "
-    "in the context, respond with: 'I couldn't find that information in the uploaded video.'"
+    "You are an assistant that answers questions only from the provided "
+    "context. Do NOT use any outside knowledge or hallucinate. If the answer is not "
+    "in the context, respond exactly with: 'I couldn't find that information in the uploaded video.'"
 )
 
 
@@ -18,7 +18,8 @@ RETRIEVAL_INSTRUCTIONS = (
     "You will be given a list of numbered context snippets extracted from a single "
     "or multiple uploaded YouTube videos. Each snippet includes a start and end "
     "timestamp and the original text. Use ONLY these snippets to answer the user's question. "
-    "When you reference information, include the snippet number and timestamp as a citation.")
+    "Do not include your internal reasoning or analysis. When you reference information, "
+    "include the snippet number and timestamp as a citation.")
 
 
 FINAL_PROMPT_TEMPLATE = (
@@ -28,12 +29,12 @@ FINAL_PROMPT_TEMPLATE = (
     "Instructions:\n"
     "{instructions}\n\n"
     "User question: {question}\n\n"
-    "Answer strictly from the context. If the answer is not available, reply:\n"
+    "Answer strictly from the context. If the answer is not available, reply exactly:\n"
     "I couldn't find that information in the uploaded video.\n\n"
     "Response format requirements:\n"
-    "1) Provide a concise answer paragraph.\n"
-    "2) Provide a 'Citations' section listing snippet numbers and timestamps used.\n"
-    "3) Provide a 'Referenced chunks' JSON array with items: {{chunk_id, video_id, start_timestamp, end_timestamp, text_excerpt}}.\n"
+    "1) Start your response with 'Final Answer:' followed by a concise paragraph.\n"
+    "2) Then include a 'Citations:' section listing snippet numbers and timestamps used.\n"
+    "3) Do not include any analysis, tool outputs, or reasoning steps.\n"
 )
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from typing import Dict, Any, List
+from urllib.parse import urlparse, parse_qs
 
 from yt_dlp import YoutubeDL
 
@@ -26,10 +27,24 @@ class VideoService:
         self.settings = get_settings()
         self.chroma = ChromaClient()
 
+    def _normalize_url(self, url: str) -> str:
+        """Normalize a YouTube URL to a single-video URL and strip playlist/query params."""
+        parsed = urlparse(url)
+        if parsed.netloc and "youtube" in parsed.netloc.lower():
+            query = parse_qs(parsed.query)
+            if "v" in query and query["v"]:
+                return f"https://www.youtube.com/watch?v={query['v'][0]}"
+        if parsed.netloc and "youtu.be" in parsed.netloc.lower():
+            video_id = parsed.path.strip("/")
+            if video_id:
+                return f"https://www.youtube.com/watch?v={video_id}"
+        return url
+
     def _extract_metadata(self, url: str) -> Dict[str, Any]:
-        ydl_opts = {"quiet": True, "skip_download": True}
+        normalized_url = self._normalize_url(url)
+        ydl_opts = {"quiet": True, "skip_download": True, "noplaylist": True}
         with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            info = ydl.extract_info(normalized_url, download=False)
         return info
 
     def process_and_index(self, db, url: str) -> Dict[str, Any]:

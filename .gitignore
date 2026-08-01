@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.egg-info/
+.eggs/
+.python-version
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+.build/
+dist/
+downloads/
+.eggs/
+*.egg
+*.egg-info/
+.installed.cfg
+*.manifest
+*.spec
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs and databases
+logs/
+*.log
+*.sqlite3
+*.db
+*.sqlite
+asktube.db
+chromadb/_persist/asktube_chunks.json
+
+# Streamlit
+.streamlit/
+
+# Local environment
+.env
+.env.*
+
+# Test/cache
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Local scripts and debug files
+backend/.temp_*.py
+frontend/__pycache__/
