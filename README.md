@@ -43,9 +43,9 @@ AskTube-BOT is a local prototype that lets you index YouTube videos (transcripts
 
 Demo Screenshot / GIF
 ---------------------
-Add a screenshot or GIF of the UI at `docs/demo.png` or `docs/demo.gif` (not included in this repo). Example:
+The UI screenshot is included in this repository at `assets/demo.png`.
 
-![Demo](docs/demo.png)
+![Demo](assets/demo.png)
 
 Features
 --------
