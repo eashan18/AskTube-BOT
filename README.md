@@ -35,69 +35,79 @@ py -3 -m streamlit run frontend/streamlit_app.py
 
 Note: `localhost` links only work on your machine. If you include them in the repo, other users cannot access your running app.
 
-## Uploading & Chatting
+# AskTube-BOT
 
-- Use the "Upload Video" page in the Streamlit UI to index a YouTube video.
-- Use the "Chat" page to ask questions about the indexed video.
-- History is stored locally in the SQLite DB and is session-scoped by default (not shared via URL).
+Project Overview
+----------------
+AskTube-BOT is a local prototype that lets you index YouTube videos (transcripts) and ask questions using a retrieval-augmented approach. It uses a FastAPI backend for indexing and search and a Streamlit frontend for interaction.
 
-## Costs & Safety
+Demo Screenshot / GIF
+---------------------
+Add a screenshot or GIF of the UI at `docs/demo.png` or `docs/demo.gif` (not included in this repo). Example:
 
-- This project may call paid services (LLM APIs, embedding APIs, managed DBs). If you deploy or provide API keys, you will be billed by the provider for usage.
-- Do not commit API keys or secrets to the repo. Use environment variables or your host's secrets manager.
-- For public deployment, add authentication, rate limits, and a billing/usage cap on your LLM provider.
-
-## Sharing the App
-
-- To share publicly, deploy to a hosting provider (Streamlit Cloud, Render, AWS, etc.) — expect hosting and API costs.
-- For a temporary public demo, you can use tools like `ngrok` to create a tunnel to your local `localhost:8501`, but this exposes your machine and should be used only temporarily.
-
-## Want me to help?
-
-I can:
-- Add a minimal README with these steps (done).
-- Add simple auth or API-key middleware to protect upload/chat endpoints.
-- Add rate-limiting middleware and file-size limits for uploads.
-- Create a GitHub Actions workflow to run tests.
-
-Reply which of the above you'd like me to add next.AskTube AI — Chat with Any YouTube Video
-========================================
-
-AskTube AI is a production-grade Retrieval-Augmented Generation (RAG) application that lets users paste YouTube URLs, automatically extract transcripts, build a vector index, and ask questions that are answered strictly from the uploaded video content.
+![Demo](docs/demo.png)
 
 Features
 --------
-- Paste a YouTube URL and extract transcripts (youtube-transcript-api with Whisper fallback).
-- Clean and chunk transcripts into semantic pieces.
-- Generate embeddings with sentence-transformers (BAAI/bge-small-en-v1.5).
-- Persist embeddings and metadata in ChromaDB (persistent storage).
-- Serve a FastAPI backend and Streamlit frontend.
-- Strict prompt templates to prevent hallucinations; responses must come from retrieved context.
-- SQLite metadata and chat history storage.
+- Upload and index YouTube videos (transcript extraction and chunking)
+- Vector embedding and retrieval for RAG-style Q&A
+- Streamlit UI for upload, chat, and session history
+- Local persistence with SQLite and optional Chroma embeddings
 
-Repository layout
------------------
+Architecture Diagram
+--------------------
+Add an architecture diagram at `docs/architecture.png` showing: Streamlit frontend → FastAPI backend → (Transcription / Embeddings / Chroma DB / SQLite).
 
-- backend/ — FastAPI app, services, RAG logic, DB models
-- frontend/ — Streamlit UI (streamlit_app.py)
-- docs/ — architecture and deployment notes
-- tests/ — pytest unit tests
-- Dockerfile, docker-compose.yml — containerization
-- requirements.txt, .env.example
+Tech Stack
+----------
+- Python 3.10+
+- FastAPI (backend)
+- Streamlit (frontend)
+- SQLite (local metadata)
+- Chroma or local embedding index
+- yt-dlp, youtube_transcript_api, Whisper (fallback)
+- Embedding model: BAAI/bge-small-en-v1.5 (configurable)
 
-Getting started (local)
------------------------
+Project Workflow
+----------------
+1. Upload a YouTube URL via the Streamlit UI.
+2. Backend extracts/transcribes captions (YouTube API or Whisper fallback).
+3. Backend splits and indexes chunks, computes embeddings, and persists metadata.
+4. User asks questions in the Chat UI; backend retrieves relevant chunks and calls the LLM to generate answers.
 
-1. Create a Python 3.11+ virtual environment and install dependencies:
+Installation
+------------
+Windows PowerShell example:
 
-    python -m venv .venv
-    source .venv/bin/activate   # or .venv\Scripts\activate on Windows
-    pip install --upgrade pip
-    pip install -r requirements.txt
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 
-2. Copy `.env.example` to `.env` and fill in keys (notably `GROQ_API_KEY` and `OPENAI_API_KEY` if used):
+# Run backend in one terminal
+py -3 -m uvicorn backend.main:app --reload --port 8001
 
-    cp .env.example .env
+# Run frontend in another terminal
+py -3 -m streamlit run frontend/streamlit_app.py
+
+# Backend: http://localhost:8001
+# Frontend: http://localhost:8501
+```
+
+Notes
+- Copy `.env.example` to `.env` and set `GROQ_API_KEY` / `OPENAI_API_KEY` if required. Do NOT commit `.env`.
+
+Future Improvements
+-------------------
+- Add authentication and rate limiting for public deployments
+- Add CI (GitHub Actions) to run tests and linters
+- Improve deployment docs and add a production configuration
+- Add integration tests for `/api/chat-history` and upload flow
+
+License
+-------
+MIT License — see `LICENSE`.
+
     # then edit .env to add API keys
 
 3. Run the FastAPI backend:
