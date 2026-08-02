@@ -1,6 +1,6 @@
 # AskTube AI - Dependencies
 # Core web & API
-fastapi>=0.95.0
+fastapi==0.103.2
 uvicorn[standard]>=0.22.0
 
 # Frontend
