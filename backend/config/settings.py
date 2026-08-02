@@ -2,6 +2,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 import os
+try:
+    from pydantic_settings import SettingsConfigDict
+except ImportError:
+    SettingsConfigDict = None
 
 try:
     from pydantic import BaseSettings, Field, AnyUrl
@@ -72,14 +76,12 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = Field("INFO", env="LOG_LEVEL")
 
-    try:
-        from pydantic_settings import SettingsConfigDict
-
-        model_config = SettingsConfigDict(
-           env_file=".env",
-           env_file_encoding="utf-8",
-        )
-    except ImportError:
+    if SettingsConfigDict is not None:
+       model_config = SettingsConfigDict(
+          env_file=".env",
+          env_file_encoding="utf-8",
+    )
+    else:
         class Config:
             env_file = ".env"
             env_file_encoding = "utf-8"
