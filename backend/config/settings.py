@@ -72,15 +72,17 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = Field("INFO", env="LOG_LEVEL")
 
-    if hasattr(BaseSettings, "model_config"):
-        model_config = {
-            "env_file": ".env",
-            "env_file_encoding": "utf-8",
-        }
+    try:
+        from pydantic_settings import SettingsConfigDict
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+        model_config = SettingsConfigDict(
+           env_file=".env",
+           env_file_encoding="utf-8",
+        )
+    except ImportError:
+        class Config:
+            env_file = ".env"
+            env_file_encoding = "utf-8"
 
 
 def _load_env_file() -> None:
